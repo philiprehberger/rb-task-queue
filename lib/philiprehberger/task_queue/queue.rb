@@ -64,6 +64,14 @@ module Philiprehberger
       # @param timeout [Numeric] seconds to wait for workers to finish
       # @return [void]
       def shutdown(timeout: 30)
+        signal_shutdown
+        wait_for_workers(timeout)
+        nil
+      end
+
+      private
+
+      def signal_shutdown
         @mutex.synchronize do
           return unless @running
 
@@ -71,18 +79,15 @@ module Philiprehberger
           @workers.each(&:stop)
           @condition.broadcast
         end
+      end
 
+      def wait_for_workers(timeout)
         deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
-
         @workers.each do |worker|
           remaining = deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC)
           worker.thread&.join([remaining, 0].max)
         end
-
-        nil
       end
-
-      private
 
       def start_workers
         @concurrency.times do

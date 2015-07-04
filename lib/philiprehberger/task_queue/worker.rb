@@ -26,24 +26,26 @@ module Philiprehberger
 
       def run
         loop do
-          task = nil
-
-          @mutex.synchronize do
-            @condition.wait(@mutex) while @queue.empty? && @running
-            break unless @running || !@queue.empty?
-
-            task = @queue.shift
-          end
-
+          task = next_task
           break unless task
 
-          begin
-            task.call
-          rescue StandardError
-            # Swallow exceptions to keep the worker alive.
-            # In a future version this could be routed to an error handler.
-          end
+          execute(task)
         end
+      end
+
+      def next_task
+        @mutex.synchronize do
+          @condition.wait(@mutex) while @queue.empty? && @running
+          return nil unless @running || !@queue.empty?
+
+          @queue.shift
+        end
+      end
+
+      def execute(task)
+        task.call
+      rescue StandardError
+        # Swallow exceptions to keep the worker alive.
       end
     end
   end
