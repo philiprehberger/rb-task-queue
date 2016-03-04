@@ -6,13 +6,13 @@ module Philiprehberger
     class Worker
       attr_reader :thread
 
-      def initialize(queue, mutex, condition, stats:, error_handler:, drain_condition:)
+      def initialize(queue, mutex, condition, context:)
         @queue = queue
         @mutex = mutex
         @condition = condition
-        @stats = stats
-        @error_handler = error_handler
-        @drain_condition = drain_condition
+        @stats = context[:stats]
+        @error_handler = context[:error_handler]
+        @drain_condition = context[:drain_condition]
         @running = true
         @thread = Thread.new { run }
       end
@@ -49,16 +49,24 @@ module Philiprehberger
 
       def execute(task)
         task.call
+        record_completion
+      rescue StandardError => e
+        record_failure(e, task)
+      end
+
+      def record_completion
         @mutex.synchronize do
           @stats[:completed] += 1
           @stats[:in_flight] -= 1
         end
-      rescue StandardError => e
+      end
+
+      def record_failure(error, task)
         @mutex.synchronize do
           @stats[:failed] += 1
           @stats[:in_flight] -= 1
         end
-        @error_handler&.call(e, task)
+        @error_handler&.call(error, task)
       end
     end
   end
