@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "worker"
+require_relative 'worker'
 
 module Philiprehberger
   module TaskQueue
@@ -67,10 +67,10 @@ module Philiprehberger
       # @return [self]
       def push(callable = nil, &block)
         task = block || callable
-        raise ArgumentError, "a block is required" unless task
+        raise ArgumentError, 'a block is required' unless task
 
         @mutex.synchronize do
-          raise "queue is shut down" unless @running
+          raise 'queue is shut down' unless @running
 
           start_workers unless @started
           @tasks << task

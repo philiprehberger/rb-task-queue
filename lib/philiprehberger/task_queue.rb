@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative "task_queue/version"
-require_relative "task_queue/queue"
+require_relative 'task_queue/version'
+require_relative 'task_queue/queue'
 
 module Philiprehberger
   module TaskQueue
