@@ -4,6 +4,11 @@ All notable changes to this gem will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.6] - 2026-03-22
+
+### Changed
+- Expand test coverage with ordering, high concurrency, drain, and error path tests
+
 ## [0.2.5] - 2026-03-22
 
 ### Changed
