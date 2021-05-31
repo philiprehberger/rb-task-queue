@@ -2,6 +2,6 @@
 
 module Philiprehberger
   module TaskQueue
-    VERSION = "0.2.9"
+    VERSION = '0.2.9'
   end
 end
