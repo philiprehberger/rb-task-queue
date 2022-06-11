@@ -2,8 +2,7 @@
 
 [![Tests](https://github.com/philiprehberger/rb-task-queue/actions/workflows/ci.yml/badge.svg)](https://github.com/philiprehberger/rb-task-queue/actions/workflows/ci.yml)
 [![Gem Version](https://badge.fury.io/rb/philiprehberger-task_queue.svg)](https://rubygems.org/gems/philiprehberger-task_queue)
-[![License](https://img.shields.io/github/license/philiprehberger/rb-task-queue)](LICENSE)
-[![Sponsor](https://img.shields.io/badge/sponsor-GitHub%20Sponsors-ec6cb9)](https://github.com/sponsors/philiprehberger)
+[![Last updated](https://img.shields.io/github/last-commit/philiprehberger/rb-task-queue)](https://github.com/philiprehberger/rb-task-queue/commits/main)
 
 In-process async job queue with concurrency control
 
@@ -145,7 +144,6 @@ queue.shutdown(timeout: 5)
 | `#stats` | _(none)_ | `Hash` | Returns `{ completed:, failed:, pending: }` with Integer counts |
 | `#drain(timeout:)` | `timeout` — seconds to wait (Numeric, default `30`) | `nil` | Block until all pending and in-flight tasks complete without shutting down |
 
-
 ## Development
 
 ```bash
@@ -153,6 +151,24 @@ bundle install
 bundle exec rspec
 bundle exec rubocop
 ```
+
+## Support
+
+If you find this project useful:
+
+⭐ [Star the repo](https://github.com/philiprehberger/rb-task-queue)
+
+🐛 [Report issues](https://github.com/philiprehberger/rb-task-queue/issues?q=is%3Aissue+is%3Aopen+label%3Abug)
+
+💡 [Suggest features](https://github.com/philiprehberger/rb-task-queue/issues?q=is%3Aissue+is%3Aopen+label%3Aenhancement)
+
+❤️ [Sponsor development](https://github.com/sponsors/philiprehberger)
+
+🌐 [All Open Source Projects](https://philiprehberger.com/open-source-packages)
+
+💻 [GitHub Profile](https://github.com/philiprehberger)
+
+🔗 [LinkedIn Profile](https://www.linkedin.com/in/philiprehberger)
 
 ## License
 
