@@ -12,6 +12,7 @@ module Philiprehberger
         @condition = condition
         @stats = context[:stats]
         @error_handler = context[:error_handler]
+        @complete_handler = context[:complete_handler]
         @drain_condition = context[:drain_condition]
         @running = true
         @thread = Thread.new { run }
@@ -48,17 +49,18 @@ module Philiprehberger
       end
 
       def execute(task)
-        task.call
-        record_completion
+        result = task.call
+        record_completion(result)
       rescue StandardError => e
         record_failure(e, task)
       end
 
-      def record_completion
+      def record_completion(result)
         @mutex.synchronize do
           @stats[:completed] += 1
           @stats[:in_flight] -= 1
         end
+        @complete_handler&.call(result)
       end
 
       def record_failure(error, task)

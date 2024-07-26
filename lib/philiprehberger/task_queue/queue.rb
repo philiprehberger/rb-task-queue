@@ -20,6 +20,7 @@ module Philiprehberger
         @running = true
         @started = false
         @error_handler = nil
+        @complete_handler = nil
         @stats = { completed: 0, failed: 0, in_flight: 0 }
       end
 
@@ -31,6 +32,17 @@ module Philiprehberger
       # @return [self]
       def on_error(&block)
         @mutex.synchronize { @error_handler = block }
+        self
+      end
+
+      # Register a callback invoked after each successful task completion.
+      #
+      # The callback receives the return value of the completed task.
+      #
+      # @yield [result] called on task success
+      # @return [self]
+      def on_complete(&block)
+        @mutex.synchronize { @complete_handler = block }
         self
       end
 
@@ -133,7 +145,8 @@ module Philiprehberger
         @concurrency.times do
           @workers << Worker.new(
             @tasks, @mutex, @condition,
-            context: { stats: @stats, error_handler: @error_handler, drain_condition: @drain_condition }
+            context: { stats: @stats, error_handler: @error_handler,
+                       complete_handler: @complete_handler, drain_condition: @drain_condition }
           )
         end
         @started = true

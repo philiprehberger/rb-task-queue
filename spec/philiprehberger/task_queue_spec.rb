@@ -215,6 +215,48 @@ RSpec.describe Philiprehberger::TaskQueue do
       end
     end
 
+    describe '#on_complete' do
+      it 'invokes the callback with the task result on success' do
+        results = []
+        mutex = Mutex.new
+
+        queue.on_complete { |result| mutex.synchronize { results << result } }
+        queue.push { 42 }
+        queue.push { :hello }
+
+        queue.drain(timeout: 5)
+        expect(results.sort_by(&:to_s)).to contain_exactly(42, :hello)
+      end
+
+      it 'does not invoke the callback when a task raises' do
+        results = []
+        mutex = Mutex.new
+
+        queue.on_complete { |result| mutex.synchronize { results << result } }
+        queue.push { raise 'boom' }
+        queue.push { :ok }
+
+        queue.drain(timeout: 5)
+        expect(results).to eq([:ok])
+      end
+
+      it 'returns self for chaining' do
+        result = queue.on_complete { |_r| nil }
+        expect(result).to eq(queue)
+      end
+
+      it 'receives the return value of the task' do
+        received = nil
+        mutex = Mutex.new
+
+        queue.on_complete { |r| mutex.synchronize { received = r } }
+        queue.push { { status: 'done', count: 5 } }
+
+        queue.drain(timeout: 5)
+        expect(received).to eq({ status: 'done', count: 5 })
+      end
+    end
+
     describe '#on_error returns self for chaining' do
       it 'returns the queue from on_error' do
         result = queue.on_error { |_e, _t| nil }

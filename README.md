@@ -67,6 +67,25 @@ puts queue.stats
 # => { completed: 0, failed: 2, pending: 0 }
 ```
 
+### Completion callback
+
+Register a callback to run after each successful task completion. The callback receives the return value of the task.
+
+```ruby
+queue = Philiprehberger::TaskQueue.new(concurrency: 2)
+
+queue.on_complete do |result|
+  puts "Task finished with: #{result}"
+end
+
+queue.push { 42 }
+queue.push { { status: "ok" } }
+
+queue.drain(timeout: 5)
+# Task finished with: 42
+# Task finished with: {:status=>"ok"}
+```
+
 ### Statistics
 
 `stats` returns a snapshot of completed, failed, and pending counts. All counters are thread-safe and updated atomically after each task finishes.
@@ -140,6 +159,7 @@ queue.shutdown(timeout: 5)
 | `#size` | _(none)_ | `Integer` | Number of pending (not yet started) tasks |
 | `#running?` | _(none)_ | `Boolean` | Whether the queue is accepting new tasks |
 | `#shutdown(timeout:)` | `timeout` — seconds to wait for workers (Numeric, default `30`) | `nil` | Signal workers to stop, drain remaining tasks, join threads up to `timeout` seconds |
+| `#on_complete(&block)` | `&block` — callback receiving `(result)` | `self` | Register a callback invoked after each successful task completion with the task's return value |
 | `#on_error(&block)` | `&block` — callback receiving `(exception, task)` | `self` | Register an error callback invoked when a task raises a `StandardError` |
 | `#stats` | _(none)_ | `Hash` | Returns `{ completed:, failed:, pending: }` with Integer counts |
 | `#drain(timeout:)` | `timeout` — seconds to wait (Numeric, default `30`) | `nil` | Block until all pending and in-flight tasks complete without shutting down |
