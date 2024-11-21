@@ -19,6 +19,8 @@ module Philiprehberger
         @workers = []
         @running = true
         @started = false
+        @paused = false
+        @pause_condition = ConditionVariable.new
         @error_handler = nil
         @complete_handler = nil
         @stats = { completed: 0, failed: 0, in_flight: 0 }
@@ -48,10 +50,53 @@ module Philiprehberger
 
       # Return statistics about processed tasks.
       #
-      # @return [Hash{Symbol => Integer}] counts for :completed, :failed, :pending
+      # @return [Hash{Symbol => Integer}] counts for :completed, :failed, :pending, :in_flight
       def stats
         @mutex.synchronize do
-          { completed: @stats[:completed], failed: @stats[:failed], pending: @tasks.size }
+          { completed: @stats[:completed], failed: @stats[:failed], pending: @tasks.size,
+            in_flight: @stats[:in_flight] }
+        end
+      end
+
+      # Pause the queue so workers stop dequeuing new tasks.
+      #
+      # In-flight tasks will finish, but no new tasks will be picked up until
+      # +resume+ is called.
+      #
+      # @return [self]
+      def pause
+        @mutex.synchronize do
+          @paused = true
+        end
+        self
+      end
+
+      # Resume a paused queue, waking workers to continue processing.
+      #
+      # @return [self]
+      def resume
+        @mutex.synchronize do
+          @paused = false
+          @pause_condition.broadcast
+        end
+        self
+      end
+
+      # Whether the queue is currently paused.
+      #
+      # @return [Boolean]
+      def paused?
+        @mutex.synchronize { @paused }
+      end
+
+      # Remove all pending tasks from the queue.
+      #
+      # @return [Integer] number of tasks cleared
+      def clear
+        @mutex.synchronize do
+          count = @tasks.size
+          @tasks.clear
+          count
         end
       end
 
@@ -128,8 +173,10 @@ module Philiprehberger
           return unless @running
 
           @running = false
+          @paused = false
           @workers.each(&:stop)
           @condition.broadcast
+          @pause_condition.broadcast
         end
       end
 
@@ -146,7 +193,8 @@ module Philiprehberger
           @workers << Worker.new(
             @tasks, @mutex, @condition,
             context: { stats: @stats, error_handler: @error_handler,
-                       complete_handler: @complete_handler, drain_condition: @drain_condition }
+                       complete_handler: @complete_handler, drain_condition: @drain_condition,
+                       paused: -> { @paused }, pause_condition: @pause_condition }
           )
         end
         @started = true

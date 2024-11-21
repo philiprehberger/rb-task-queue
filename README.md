@@ -64,7 +64,7 @@ queue.push { File.read("/nonexistent") }
 
 queue.drain(timeout: 5)
 puts queue.stats
-# => { completed: 0, failed: 2, pending: 0 }
+# => { completed: 0, failed: 2, pending: 0, in_flight: 0 }
 ```
 
 ### Completion callback
@@ -88,7 +88,7 @@ queue.drain(timeout: 5)
 
 ### Statistics
 
-`stats` returns a snapshot of completed, failed, and pending counts. All counters are thread-safe and updated atomically after each task finishes.
+`stats` returns a snapshot of completed, failed, pending, and in-flight counts. All counters are thread-safe and updated atomically after each task finishes.
 
 ```ruby
 queue = Philiprehberger::TaskQueue.new(concurrency: 4)
@@ -100,9 +100,44 @@ stats = queue.stats
 puts "Completed: #{stats[:completed]}"
 puts "Failed:    #{stats[:failed]}"
 puts "Pending:   #{stats[:pending]}"
+puts "In-flight: #{stats[:in_flight]}"
 # Completed: 19
 # Failed:    1
 # Pending:   0
+# In-flight: 0
+```
+
+### Pause and resume
+
+Temporarily suspend task consumption without shutting down. In-flight tasks will finish, but no new tasks are picked up until the queue is resumed.
+
+```ruby
+queue = Philiprehberger::TaskQueue.new(concurrency: 4)
+
+10.times { |i| queue.push { process(i) } }
+
+queue.pause
+puts queue.paused?  # => true
+
+# Tasks already in flight will complete, but pending tasks wait.
+queue.resume
+puts queue.paused?  # => false
+
+queue.shutdown(timeout: 10)
+```
+
+### Clear pending tasks
+
+Discard all pending tasks from the queue. Returns the number of tasks removed.
+
+```ruby
+queue = Philiprehberger::TaskQueue.new(concurrency: 2)
+
+100.times { |i| queue.push { process(i) } }
+cleared = queue.clear
+puts "Cleared #{cleared} tasks"
+
+queue.shutdown(timeout: 5)
 ```
 
 ### FIFO ordering guarantees
@@ -161,8 +196,12 @@ queue.shutdown(timeout: 5)
 | `#shutdown(timeout:)` | `timeout` — seconds to wait for workers (Numeric, default `30`) | `nil` | Signal workers to stop, drain remaining tasks, join threads up to `timeout` seconds |
 | `#on_complete(&block)` | `&block` — callback receiving `(result)` | `self` | Register a callback invoked after each successful task completion with the task's return value |
 | `#on_error(&block)` | `&block` — callback receiving `(exception, task)` | `self` | Register an error callback invoked when a task raises a `StandardError` |
-| `#stats` | _(none)_ | `Hash` | Returns `{ completed:, failed:, pending: }` with Integer counts |
+| `#stats` | _(none)_ | `Hash` | Returns `{ completed:, failed:, pending:, in_flight: }` with Integer counts |
 | `#drain(timeout:)` | `timeout` — seconds to wait (Numeric, default `30`) | `nil` | Block until all pending and in-flight tasks complete without shutting down |
+| `#pause` | _(none)_ | `self` | Suspend task consumption; in-flight tasks finish but no new tasks are picked up |
+| `#resume` | _(none)_ | `self` | Resume a paused queue, waking workers to continue processing |
+| `#paused?` | _(none)_ | `Boolean` | Whether the queue is currently paused |
+| `#clear` | _(none)_ | `Integer` | Remove all pending tasks and return the number cleared |
 
 ## Development
 

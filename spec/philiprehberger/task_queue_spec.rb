@@ -434,6 +434,111 @@ RSpec.describe Philiprehberger::TaskQueue do
       end
     end
 
+    describe '#stats includes in_flight' do
+      it 'includes the in_flight key' do
+        stats = queue.stats
+        expect(stats).to have_key(:in_flight)
+        expect(stats[:in_flight]).to eq(0)
+      end
+
+      it 'shows in_flight during execution' do
+        nil
+        Mutex.new
+        barrier = Queue.new
+
+        queue.push do
+          barrier.pop
+        end
+
+        sleep 0.1
+        in_flight_seen = queue.stats[:in_flight]
+        barrier << :go
+
+        queue.drain(timeout: 5)
+        expect(in_flight_seen).to eq(1)
+      end
+    end
+
+    describe '#pause' do
+      it 'stops workers from dequeuing new tasks' do
+        results = []
+        mutex = Mutex.new
+
+        queue.pause
+
+        5.times do |i|
+          queue.push { mutex.synchronize { results << i } }
+        end
+
+        sleep 0.2
+        expect(results).to be_empty
+
+        queue.resume
+        queue.drain(timeout: 5)
+        expect(results.size).to eq(5)
+      end
+    end
+
+    describe '#resume' do
+      it 'resumes execution after pause' do
+        results = []
+        mutex = Mutex.new
+
+        queue.pause
+        3.times { |i| queue.push { mutex.synchronize { results << i } } }
+
+        sleep 0.2
+        expect(results).to be_empty
+
+        queue.resume
+        queue.drain(timeout: 5)
+        expect(results.sort).to eq([0, 1, 2])
+      end
+
+      it 'returns self for chaining' do
+        result = queue.resume
+        expect(result).to eq(queue)
+      end
+    end
+
+    describe '#paused?' do
+      it 'returns false by default' do
+        expect(queue.paused?).to be false
+      end
+
+      it 'returns true after pause' do
+        queue.pause
+        expect(queue.paused?).to be true
+      end
+
+      it 'returns false after resume' do
+        queue.pause
+        queue.resume
+        expect(queue.paused?).to be false
+      end
+    end
+
+    describe '#clear' do
+      it 'empties pending tasks and returns count' do
+        single_queue = described_class.new(concurrency: 1)
+        single_queue.pause
+
+        5.times { single_queue.push { nil } }
+        expect(single_queue.size).to eq(5)
+
+        cleared = single_queue.clear
+        expect(cleared).to eq(5)
+        expect(single_queue.size).to eq(0)
+
+        single_queue.resume
+        single_queue.shutdown(timeout: 5)
+      end
+
+      it 'returns 0 when queue is empty' do
+        expect(queue.clear).to eq(0)
+      end
+    end
+
     describe 'version' do
       it 'has a version number' do
         expect(Philiprehberger::TaskQueue::VERSION).not_to be_nil
