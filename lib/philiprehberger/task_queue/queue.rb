@@ -146,6 +146,15 @@ module Philiprehberger
         @mutex.synchronize { @tasks.size }
       end
 
+      # Whether there are no pending tasks waiting to be started.
+      #
+      # In-flight tasks are not considered; use +drain+ to wait for them.
+      #
+      # @return [Boolean]
+      def empty?
+        @mutex.synchronize { @tasks.empty? }
+      end
+
       # Whether the queue is accepting new tasks.
       #
       # @return [Boolean]
