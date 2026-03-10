@@ -22,16 +22,18 @@ module Philiprehberger
 
       # Enqueue a task to be processed asynchronously.
       #
-      # @yield the block to execute
+      # @param callable [#call, nil] a callable object (used by +<<+)
+      # @yield the block to execute (takes precedence over +callable+)
       # @return [self]
-      def push(&block)
-        raise ArgumentError, "a block is required" unless block
+      def push(callable = nil, &block)
+        task = block || callable
+        raise ArgumentError, "a block is required" unless task
 
         @mutex.synchronize do
           raise "queue is shut down" unless @running
 
           start_workers unless @started
-          @tasks << block
+          @tasks << task
           @condition.signal
         end
 
