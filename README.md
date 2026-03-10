@@ -1,0 +1,58 @@
+# philiprehberger-task_queue
+
+[![Gem Version](https://badge.fury.io/rb/philiprehberger-task_queue.svg)](https://rubygems.org/gems/philiprehberger-task_queue)
+[![CI](https://github.com/philiprehberger/rb-task-queue/actions/workflows/ci.yml/badge.svg)](https://github.com/philiprehberger/rb-task-queue/actions/workflows/ci.yml)
+
+In-process async job queue with concurrency control for Ruby.
+
+## Installation
+
+Add to your Gemfile:
+
+```ruby
+gem "philiprehberger-task_queue"
+```
+
+Or install directly:
+
+```sh
+gem install philiprehberger-task_queue
+```
+
+## Usage
+
+```ruby
+require "philiprehberger/task_queue"
+
+queue = Philiprehberger::TaskQueue.new(concurrency: 4)
+
+10.times do |i|
+  queue.push { puts "Processing job #{i}" }
+end
+
+puts queue.size      # number of pending tasks
+puts queue.running?  # => true
+
+queue.shutdown(timeout: 30)
+```
+
+### Using the `<<` alias
+
+```ruby
+queue << -> { puts "Hello from a task!" }
+```
+
+## API
+
+| Method | Description |
+|---|---|
+| `.new(concurrency: 4)` | Create a new queue with the given max worker count |
+| `#push(&block)` | Enqueue a task (block) for async execution |
+| `#<< (&block)` | Alias for `#push` |
+| `#size` | Number of pending (not yet started) tasks |
+| `#running?` | Whether the queue is accepting new tasks |
+| `#shutdown(timeout: 30)` | Gracefully stop all workers, waiting up to `timeout` seconds |
+
+## License
+
+[MIT](LICENSE)
