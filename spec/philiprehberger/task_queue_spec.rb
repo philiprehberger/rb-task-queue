@@ -20,7 +20,7 @@ RSpec.describe Philiprehberger::TaskQueue do
 
     describe "#push" do
       it "enqueues and executes a task" do
-        result = Concurrent::Array.new rescue []
+        result = []
         mutex = Mutex.new
 
         queue.push do
