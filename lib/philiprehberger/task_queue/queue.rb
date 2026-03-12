@@ -15,9 +15,49 @@ module Philiprehberger
         @tasks = []
         @mutex = Mutex.new
         @condition = ConditionVariable.new
+        @drain_condition = ConditionVariable.new
         @workers = []
         @running = true
         @started = false
+        @error_handler = nil
+        @stats = { completed: 0, failed: 0, in_flight: 0 }
+      end
+
+      # Register a callback invoked when a task raises an exception.
+      #
+      # The callback receives the exception and the task that raised it.
+      #
+      # @yield [exception, task] called on task failure
+      # @return [self]
+      def on_error(&block)
+        @mutex.synchronize { @error_handler = block }
+        self
+      end
+
+      # Return statistics about processed tasks.
+      #
+      # @return [Hash{Symbol => Integer}] counts for :completed, :failed, :pending
+      def stats
+        @mutex.synchronize do
+          { completed: @stats[:completed], failed: @stats[:failed], pending: @tasks.size }
+        end
+      end
+
+      # Block until all pending tasks are complete without shutting down.
+      #
+      # @param timeout [Numeric] seconds to wait before returning
+      # @return [void]
+      def drain(timeout: 30)
+        deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
+        @mutex.synchronize do
+          while !@tasks.empty? || @stats[:in_flight] > 0
+            remaining = deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC)
+            break if remaining <= 0
+
+            @drain_condition.wait(@mutex, remaining)
+          end
+        end
+        nil
       end
 
       # Enqueue a task to be processed asynchronously.
@@ -91,7 +131,11 @@ module Philiprehberger
 
       def start_workers
         @concurrency.times do
-          @workers << Worker.new(@tasks, @mutex, @condition)
+          @workers << Worker.new(
+            @tasks, @mutex, @condition,
+            stats: @stats, error_handler: @error_handler,
+            drain_condition: @drain_condition
+          )
         end
         @started = true
       end

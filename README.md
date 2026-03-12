@@ -42,6 +42,33 @@ queue.shutdown(timeout: 30)
 queue << -> { puts "Hello from a task!" }
 ```
 
+### Error handling
+
+```ruby
+queue = Philiprehberger::TaskQueue.new
+
+queue.on_error do |exception, task|
+  puts "Task failed: #{exception.message}"
+end
+
+queue.push { raise "oops" }
+```
+
+### Statistics
+
+```ruby
+queue.stats
+# => { completed: 5, failed: 1, pending: 2 }
+```
+
+### Draining
+
+```ruby
+10.times { |i| queue.push { process(i) } }
+queue.drain(timeout: 10)  # waits for all tasks to finish
+# queue is still running and accepting new tasks
+```
+
 ## API
 
 | Method | Description |
@@ -52,6 +79,9 @@ queue << -> { puts "Hello from a task!" }
 | `#size` | Number of pending (not yet started) tasks |
 | `#running?` | Whether the queue is accepting new tasks |
 | `#shutdown(timeout: 30)` | Gracefully stop all workers, waiting up to `timeout` seconds |
+| `#on_error(&block)` | Register error callback for failed tasks |
+| `#stats` | Returns hash with `:completed`, `:failed`, `:pending` counts |
+| `#drain(timeout: 30)` | Block until all pending tasks complete (without shutdown) |
 
 ## License
 

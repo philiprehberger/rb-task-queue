@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2026-03-12
+
+### Added
+
+- `on_error` callback for handling task failures
+- `stats` method returning completed, failed, and pending task counts
+- `drain(timeout:)` method to wait for task completion without shutting down
+
 ## [0.1.0] - 2026-03-10
 
 ### Added

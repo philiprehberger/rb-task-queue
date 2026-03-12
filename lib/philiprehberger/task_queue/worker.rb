@@ -6,10 +6,13 @@ module Philiprehberger
     class Worker
       attr_reader :thread
 
-      def initialize(queue, mutex, condition)
+      def initialize(queue, mutex, condition, stats:, error_handler:, drain_condition:)
         @queue = queue
         @mutex = mutex
         @condition = condition
+        @stats = stats
+        @error_handler = error_handler
+        @drain_condition = drain_condition
         @running = true
         @thread = Thread.new { run }
       end
@@ -30,6 +33,7 @@ module Philiprehberger
           break unless task
 
           execute(task)
+          @mutex.synchronize { @drain_condition.broadcast }
         end
       end
 
@@ -38,14 +42,23 @@ module Philiprehberger
           @condition.wait(@mutex) while @queue.empty? && @running
           return nil unless @running || !@queue.empty?
 
+          @stats[:in_flight] += 1
           @queue.shift
         end
       end
 
       def execute(task)
         task.call
-      rescue StandardError
-        # Swallow exceptions to keep the worker alive.
+        @mutex.synchronize do
+          @stats[:completed] += 1
+          @stats[:in_flight] -= 1
+        end
+      rescue StandardError => e
+        @mutex.synchronize do
+          @stats[:failed] += 1
+          @stats[:in_flight] -= 1
+        end
+        @error_handler&.call(e, task)
       end
     end
   end

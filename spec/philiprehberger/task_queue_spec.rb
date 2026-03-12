@@ -128,5 +128,82 @@ RSpec.describe Philiprehberger::TaskQueue do
         expect(results).to include(:after_error)
       end
     end
+
+    describe "#on_error" do
+      it "invokes the callback when a task raises" do
+        errors = []
+        mutex = Mutex.new
+
+        queue.on_error { |e, _task| mutex.synchronize { errors << e.message } }
+        queue.push { raise "callback boom" }
+
+        sleep 0.2
+        expect(errors).to include("callback boom")
+      end
+
+      it "receives both the exception and the task" do
+        received = []
+        mutex = Mutex.new
+        failing_task = proc { raise "task error" }
+
+        queue.on_error { |e, task| mutex.synchronize { received << [e, task] } }
+        queue << failing_task
+
+        sleep 0.2
+        expect(received.size).to eq(1)
+        expect(received.first[0]).to be_a(RuntimeError)
+        expect(received.first[0].message).to eq("task error")
+        expect(received.first[1]).to eq(failing_task)
+      end
+    end
+
+    describe "#stats" do
+      it "returns correct completed count" do
+        3.times { queue.push { nil } }
+
+        sleep 0.2
+        expect(queue.stats[:completed]).to eq(3)
+      end
+
+      it "returns correct failed count" do
+        2.times { queue.push { raise "fail" } }
+        queue.push { nil }
+
+        sleep 0.2
+        expect(queue.stats[:failed]).to eq(2)
+        expect(queue.stats[:completed]).to eq(1)
+      end
+    end
+
+    describe "#drain" do
+      it "blocks until all tasks complete" do
+        results = []
+        mutex = Mutex.new
+
+        5.times do |i|
+          queue.push do
+            sleep 0.05
+            mutex.synchronize { results << i }
+          end
+        end
+
+        queue.drain(timeout: 10)
+        expect(results.sort).to eq([0, 1, 2, 3, 4])
+      end
+
+      it "does not shut down the queue" do
+        queue.push { nil }
+        queue.drain(timeout: 5)
+
+        expect(queue.running?).to be true
+
+        result = []
+        mutex = Mutex.new
+        queue.push { mutex.synchronize { result << :after_drain } }
+
+        sleep 0.1
+        expect(result).to include(:after_drain)
+      end
+    end
   end
 end
