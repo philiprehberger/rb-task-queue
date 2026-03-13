@@ -50,7 +50,7 @@ module Philiprehberger
       def drain(timeout: 30)
         deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
         @mutex.synchronize do
-          while !@tasks.empty? || @stats[:in_flight] > 0
+          while !@tasks.empty? || @stats[:in_flight].positive?
             remaining = deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC)
             break if remaining <= 0
 
@@ -133,8 +133,7 @@ module Philiprehberger
         @concurrency.times do
           @workers << Worker.new(
             @tasks, @mutex, @condition,
-            stats: @stats, error_handler: @error_handler,
-            drain_condition: @drain_condition
+            context: { stats: @stats, error_handler: @error_handler, drain_condition: @drain_condition }
           )
         end
         @started = true
