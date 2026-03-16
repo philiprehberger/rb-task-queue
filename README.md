@@ -2,8 +2,13 @@
 
 [![Gem Version](https://badge.fury.io/rb/philiprehberger-task_queue.svg)](https://rubygems.org/gems/philiprehberger-task_queue)
 [![CI](https://github.com/philiprehberger/rb-task-queue/actions/workflows/ci.yml/badge.svg)](https://github.com/philiprehberger/rb-task-queue/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/philiprehberger/rb-task-queue)](LICENSE)
 
 In-process async job queue with concurrency control for Ruby.
+
+## Requirements
+
+- Ruby >= 3.1
 
 ## Installation
 
@@ -82,6 +87,15 @@ queue.drain(timeout: 10)  # waits for all tasks to finish
 | `#on_error(&block)` | Register error callback for failed tasks |
 | `#stats` | Returns hash with `:completed`, `:failed`, `:pending` counts |
 | `#drain(timeout: 30)` | Block until all pending tasks complete (without shutdown) |
+
+
+## Development
+
+```bash
+bundle install
+bundle exec rspec
+bundle exec rubocop
+```
 
 ## License
 

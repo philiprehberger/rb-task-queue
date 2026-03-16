@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1
+
+- Add License badge to README
+- Add bug_tracker_uri to gemspec
+- Add Development section to README
+- Add Requirements section to README
+
 All notable changes to this project will be documented in this file.
 
 ## [0.2.0] - 2026-03-12
