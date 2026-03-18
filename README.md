@@ -20,7 +20,7 @@ gem "philiprehberger-task_queue"
 
 Or install directly:
 
-```sh
+```bash
 gem install philiprehberger-task_queue
 ```
 
@@ -99,4 +99,4 @@ bundle exec rubocop
 
 ## License
 
-[MIT](LICENSE)
+MIT
