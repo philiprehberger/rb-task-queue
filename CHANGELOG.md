@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.2.3] - 2026-03-20
+
+### Changed
+- Expand README with detailed API documentation and usage examples
+
 ## 0.2.2
 
 - Fix RuboCop Style/StringLiterals violations in gemspec
