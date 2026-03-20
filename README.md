@@ -1,7 +1,7 @@
 # philiprehberger-task_queue
 
+[![Tests](https://github.com/philiprehberger/rb-task-queue/actions/workflows/ci.yml/badge.svg)](https://github.com/philiprehberger/rb-task-queue/actions/workflows/ci.yml)
 [![Gem Version](https://badge.fury.io/rb/philiprehberger-task_queue.svg)](https://rubygems.org/gems/philiprehberger-task_queue)
-[![CI](https://github.com/philiprehberger/rb-task-queue/actions/workflows/ci.yml/badge.svg)](https://github.com/philiprehberger/rb-task-queue/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/philiprehberger/rb-task-queue)](LICENSE)
 
 In-process async job queue with concurrency control for Ruby.
