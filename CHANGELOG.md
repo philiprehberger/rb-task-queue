@@ -1,8 +1,14 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+All notable changes to this gem will be documented in this file.
 
 ## [Unreleased]
+
+## [0.2.4] - 2026-03-20
+
+### Fixed
+- Fix README description trailing period
+- Fix CHANGELOG header wording
 
 ## [0.2.3] - 2026-03-20
 
