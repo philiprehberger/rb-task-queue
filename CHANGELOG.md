@@ -4,6 +4,11 @@ All notable changes to this gem will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-03-22
+
+### Changed
+- Expand test coverage
+
 ## [0.2.4] - 2026-03-20
 
 ### Fixed
