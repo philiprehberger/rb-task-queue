@@ -320,5 +320,82 @@ RSpec.describe Philiprehberger::TaskQueue do
         expect { queue << proc {} }.to raise_error(RuntimeError, /shut down/)
       end
     end
+
+    describe 'task ordering with single worker' do
+      it 'processes tasks in FIFO order' do
+        fifo_queue = described_class.new(concurrency: 1)
+        order = []
+        mutex = Mutex.new
+
+        10.times do |i|
+          fifo_queue.push { mutex.synchronize { order << i } }
+        end
+
+        fifo_queue.shutdown(timeout: 10)
+        expect(order).to eq((0..9).to_a)
+      end
+    end
+
+    describe 'high concurrency' do
+      it 'handles concurrency of 8 workers' do
+        high_queue = described_class.new(concurrency: 8)
+        counter = 0
+        mutex = Mutex.new
+
+        50.times do
+          high_queue.push { mutex.synchronize { counter += 1 } }
+        end
+
+        high_queue.shutdown(timeout: 10)
+        expect(counter).to eq(50)
+      end
+    end
+
+    describe 'stats after drain' do
+      it 'reflects all completed tasks after drain' do
+        10.times { queue.push { nil } }
+        queue.drain(timeout: 10)
+        expect(queue.stats[:completed]).to eq(10)
+        expect(queue.stats[:pending]).to eq(0)
+      end
+    end
+
+    describe 'mixed success and failure stats' do
+      it 'tracks both completed and failed accurately' do
+        3.times { queue.push { nil } }
+        2.times { queue.push { raise 'fail' } }
+        queue.drain(timeout: 10)
+        stats = queue.stats
+        expect(stats[:completed]).to eq(3)
+        expect(stats[:failed]).to eq(2)
+      end
+    end
+
+    describe 'error handler not set' do
+      it 'does not crash when error handler is nil and task fails' do
+        queue.push { raise 'no handler' }
+        queue.drain(timeout: 5)
+        expect(queue.stats[:failed]).to eq(1)
+      end
+    end
+
+    describe 'push after drain' do
+      it 'allows pushing more tasks after drain completes' do
+        queue.push { nil }
+        queue.drain(timeout: 5)
+
+        result = []
+        mutex = Mutex.new
+        queue.push { mutex.synchronize { result << :second_batch } }
+        queue.drain(timeout: 5)
+        expect(result).to include(:second_batch)
+      end
+    end
+
+    describe 'version' do
+      it 'has a version number' do
+        expect(Philiprehberger::TaskQueue::VERSION).not_to be_nil
+      end
+    end
   end
 end
