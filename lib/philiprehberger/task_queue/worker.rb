@@ -14,6 +14,8 @@ module Philiprehberger
         @error_handler = context[:error_handler]
         @complete_handler = context[:complete_handler]
         @drain_condition = context[:drain_condition]
+        @paused = context[:paused]
+        @pause_condition = context[:pause_condition]
         @running = true
         @thread = Thread.new { run }
       end
@@ -41,6 +43,9 @@ module Philiprehberger
       def next_task
         @mutex.synchronize do
           @condition.wait(@mutex) while @queue.empty? && @running
+          return nil unless @running || !@queue.empty?
+
+          @pause_condition.wait(@mutex) while @paused&.call && @running
           return nil unless @running || !@queue.empty?
 
           @stats[:in_flight] += 1

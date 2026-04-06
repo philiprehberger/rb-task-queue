@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-04-05
+
+### Added
+- `in_flight` count in `stats` hash for monitoring active task execution
+- `Queue#pause` and `Queue#resume` for temporarily suspending task consumption
+- `Queue#paused?` to check pause state
+- `Queue#clear` to discard all pending tasks
+
 ## [0.3.0] - 2026-04-04
 
 ### Added
