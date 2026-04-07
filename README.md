@@ -192,6 +192,7 @@ queue.shutdown(timeout: 5)
 | `#push(&block)` | `&block` — the task to execute | `self` | Enqueue a block for async execution; raises `ArgumentError` if no block given, raises `RuntimeError` if the queue is shut down |
 | `#<<(callable)` | `callable` — any object responding to `#call` | `self` | Alias for `#push`; convenient for lambdas and procs |
 | `#size` | _(none)_ | `Integer` | Number of pending (not yet started) tasks |
+| `#empty?` | _(none)_ | `Boolean` | Whether there are no pending tasks waiting to be started |
 | `#running?` | _(none)_ | `Boolean` | Whether the queue is accepting new tasks |
 | `#shutdown(timeout:)` | `timeout` — seconds to wait for workers (Numeric, default `30`) | `nil` | Signal workers to stop, drain remaining tasks, join threads up to `timeout` seconds |
 | `#on_complete(&block)` | `&block` — callback receiving `(result)` | `self` | Register a callback invoked after each successful task completion with the task's return value |
