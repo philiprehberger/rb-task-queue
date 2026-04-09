@@ -8,7 +8,7 @@ Gem::Specification.new do |spec|
   spec.authors = ['Philip Rehberger']
   spec.email = ['me@philiprehberger.com']
 
-  spec.summary = 'In-process async job queue with concurrency control for Ruby'
+  spec.summary = 'In-process async job queue with concurrency control'
   spec.description = 'A lightweight, zero-dependency, thread-safe in-process async job queue ' \
                      'with configurable concurrency for Ruby applications.'
   spec.homepage = 'https://philiprehberger.com/open-source-packages/ruby/philiprehberger-task_queue'
