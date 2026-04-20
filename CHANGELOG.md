@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-04-19
+
+### Added
+- `Queue#stats_reset!` — atomically zero the `completed` and `failed` counters while leaving pending, in-flight, workers, and callbacks untouched; useful for per-interval metrics
+
 ## [0.4.2] - 2026-04-08
 
 ### Changed

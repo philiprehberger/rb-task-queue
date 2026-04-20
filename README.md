@@ -140,6 +140,16 @@ puts "Cleared #{cleared} tasks"
 queue.shutdown(timeout: 5)
 ```
 
+### Reset counters
+
+```ruby
+queue = Philiprehberger::TaskQueue.new(concurrency: 4)
+10.times { queue.push { do_work } }
+queue.drain
+queue.stats_reset!
+queue.stats[:completed] # => 0
+```
+
 ### FIFO ordering guarantees
 
 Tasks are stored in an internal array and dequeued in FIFO order. When `concurrency` is `1`, tasks execute strictly in the order they were pushed. With higher concurrency, dequeue order is still FIFO but tasks may complete out of order depending on individual execution time.
@@ -203,6 +213,7 @@ queue.shutdown(timeout: 5)
 | `#resume` | _(none)_ | `self` | Resume a paused queue, waking workers to continue processing |
 | `#paused?` | _(none)_ | `Boolean` | Whether the queue is currently paused |
 | `#clear` | _(none)_ | `Integer` | Remove all pending tasks and return the number cleared |
+| `#stats_reset!` | _(none)_ | `self` | Atomically zero the `completed` and `failed` counters while leaving pending, in-flight, workers, and callbacks untouched |
 
 ## Development
 
