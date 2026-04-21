@@ -100,6 +100,21 @@ module Philiprehberger
         end
       end
 
+      # Atomically zero the +completed+ and +failed+ counters.
+      #
+      # Leaves +pending+, +in_flight+, worker threads, and registered callbacks
+      # untouched. Useful for resetting metrics between reporting intervals
+      # without shutting down the pool.
+      #
+      # @return [self]
+      def stats_reset!
+        @mutex.synchronize do
+          @stats[:completed] = 0
+          @stats[:failed] = 0
+        end
+        self
+      end
+
       # Block until all pending tasks are complete without shutting down.
       #
       # @param timeout [Numeric] seconds to wait before returning

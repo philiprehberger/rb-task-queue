@@ -539,6 +539,58 @@ RSpec.describe Philiprehberger::TaskQueue do
       end
     end
 
+    describe '#stats_reset!' do
+      it 'zeroes completed and failed counters' do
+        3.times { queue.push { nil } }
+        2.times { queue.push { raise 'fail' } }
+        queue.drain(timeout: 10)
+
+        expect(queue.stats[:completed]).to be > 0
+        expect(queue.stats[:failed]).to be > 0
+
+        queue.stats_reset!
+
+        stats = queue.stats
+        expect(stats[:completed]).to eq(0)
+        expect(stats[:failed]).to eq(0)
+      end
+
+      it 'leaves pending and in_flight untouched' do
+        3.times { queue.push { nil } }
+        2.times { queue.push { raise 'fail' } }
+        queue.drain(timeout: 10)
+
+        pending_before = queue.stats[:pending]
+        in_flight_before = queue.stats[:in_flight]
+
+        queue.stats_reset!
+
+        stats = queue.stats
+        expect(stats[:pending]).to eq(pending_before)
+        expect(stats[:in_flight]).to eq(in_flight_before)
+      end
+
+      it 'returns self for chaining' do
+        expect(queue.stats_reset!).to eq(queue)
+      end
+
+      it 'still counts subsequent tasks correctly after reset' do
+        2.times { queue.push { nil } }
+        queue.push { raise 'fail' }
+        queue.drain(timeout: 10)
+
+        queue.stats_reset!
+
+        4.times { queue.push { nil } }
+        queue.push { raise 'fail' }
+        queue.drain(timeout: 10)
+
+        stats = queue.stats
+        expect(stats[:completed]).to eq(4)
+        expect(stats[:failed]).to eq(1)
+      end
+    end
+
     describe 'version' do
       it 'has a version number' do
         expect(Philiprehberger::TaskQueue::VERSION).not_to be_nil
