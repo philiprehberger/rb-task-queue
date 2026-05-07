@@ -97,14 +97,16 @@ queue = Philiprehberger::TaskQueue.new(concurrency: 4)
 queue.drain(timeout: 10)
 
 stats = queue.stats
-puts "Completed: #{stats[:completed]}"
-puts "Failed:    #{stats[:failed]}"
-puts "Pending:   #{stats[:pending]}"
-puts "In-flight: #{stats[:in_flight]}"
-# Completed: 19
-# Failed:    1
-# Pending:   0
-# In-flight: 0
+puts "Completed:   #{stats[:completed]}"
+puts "Failed:      #{stats[:failed]}"
+puts "Pending:     #{stats[:pending]}"
+puts "In-flight:   #{stats[:in_flight]}"
+puts "Concurrency: #{queue.concurrency}"
+# Completed:   19
+# Failed:      1
+# Pending:     0
+# In-flight:   0
+# Concurrency: 4
 ```
 
 ### Pause and resume
@@ -214,6 +216,7 @@ queue.shutdown(timeout: 5)
 | `#paused?` | _(none)_ | `Boolean` | Whether the queue is currently paused |
 | `#clear` | _(none)_ | `Integer` | Remove all pending tasks and return the number cleared |
 | `#stats_reset!` | _(none)_ | `self` | Atomically zero the `completed` and `failed` counters while leaving pending, in-flight, workers, and callbacks untouched |
+| `#concurrency` | _(none)_ | `Integer` | Returns the configured maximum number of concurrent worker threads |
 
 ## Development
 

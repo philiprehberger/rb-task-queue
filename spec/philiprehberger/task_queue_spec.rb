@@ -591,6 +591,26 @@ RSpec.describe Philiprehberger::TaskQueue do
       end
     end
 
+    describe '#concurrency' do
+      it 'returns the default concurrency of 4 when not specified' do
+        default_queue = Philiprehberger::TaskQueue.new
+        expect(default_queue.concurrency).to eq(4)
+        default_queue.shutdown(timeout: 5)
+      end
+
+      it 'returns the configured concurrency value' do
+        custom_queue = Philiprehberger::TaskQueue.new(concurrency: 8)
+        expect(custom_queue.concurrency).to eq(8)
+        custom_queue.shutdown(timeout: 5)
+      end
+
+      it 'is callable on a paused queue' do
+        queue.pause
+        expect(queue.concurrency).to eq(concurrency)
+        queue.resume
+      end
+    end
+
     describe 'version' do
       it 'has a version number' do
         expect(Philiprehberger::TaskQueue::VERSION).not_to be_nil

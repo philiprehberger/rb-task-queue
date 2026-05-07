@@ -9,6 +9,9 @@ module Philiprehberger
     # Tasks are enqueued as blocks or callable objects and executed by a pool of
     # worker threads. The queue is fully thread-safe.
     class Queue
+      # @return [Integer] the maximum number of concurrent worker threads
+      attr_reader :concurrency
+
       # @param concurrency [Integer] maximum number of concurrent worker threads
       def initialize(concurrency: 4)
         @concurrency = concurrency
