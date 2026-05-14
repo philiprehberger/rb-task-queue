@@ -611,6 +611,31 @@ RSpec.describe Philiprehberger::TaskQueue do
       end
     end
 
+    describe '#busy?' do
+      it 'is false on a fresh queue' do
+        idle = Philiprehberger::TaskQueue.new(concurrency: 1)
+        expect(idle.busy?).to be false
+        idle.shutdown(timeout: 5)
+      end
+
+      it 'is true while tasks are pending or in-flight' do
+        gate = Queue.new
+        release = Queue.new
+
+        queue.push do
+          gate << :running
+          release.pop
+        end
+
+        expect(gate.pop).to eq(:running)
+        expect(queue.busy?).to be true
+
+        release << :go
+        queue.drain(timeout: 5)
+        expect(queue.busy?).to be false
+      end
+    end
+
     describe 'version' do
       it 'has a version number' do
         expect(Philiprehberger::TaskQueue::VERSION).not_to be_nil

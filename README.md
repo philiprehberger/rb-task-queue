@@ -205,6 +205,7 @@ queue.shutdown(timeout: 5)
 | `#<<(callable)` | `callable` — any object responding to `#call` | `self` | Alias for `#push`; convenient for lambdas and procs |
 | `#size` | _(none)_ | `Integer` | Number of pending (not yet started) tasks |
 | `#empty?` | _(none)_ | `Boolean` | Whether there are no pending tasks waiting to be started |
+| `#busy?` | _(none)_ | `Boolean` | Whether the queue has any pending tasks or in-flight tasks |
 | `#running?` | _(none)_ | `Boolean` | Whether the queue is accepting new tasks |
 | `#shutdown(timeout:)` | `timeout` — seconds to wait for workers (Numeric, default `30`) | `nil` | Signal workers to stop, drain remaining tasks, join threads up to `timeout` seconds |
 | `#on_complete(&block)` | `&block` — callback receiving `(result)` | `self` | Register a callback invoked after each successful task completion with the task's return value |

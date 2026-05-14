@@ -173,6 +173,16 @@ module Philiprehberger
         @mutex.synchronize { @tasks.empty? }
       end
 
+      # Whether the queue has any pending tasks or any in-flight tasks.
+      #
+      # Convenient inverse of "idle" for callers polling without going
+      # through +stats+. Equivalent to: +!empty? || in_flight > 0+.
+      #
+      # @return [Boolean]
+      def busy?
+        @mutex.synchronize { !@tasks.empty? || @stats[:in_flight].positive? }
+      end
+
       # Whether the queue is accepting new tasks.
       #
       # @return [Boolean]

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-05-13
+
+### Added
+- `Queue#busy?` — predicate returning `true` when there are pending tasks or in-flight tasks; convenient inverse of "idle" for callers polling without going through `#stats`.
+
 ## [0.6.0] - 2026-05-07
 
 ### Added
