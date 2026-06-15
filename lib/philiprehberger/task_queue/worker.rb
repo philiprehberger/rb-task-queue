@@ -20,10 +20,17 @@ module Philiprehberger
         @thread = Thread.new { run }
       end
 
+      # Signal the worker to stop after its current task completes.
+      #
+      # @return [void]
       def stop
         @running = false
+        nil
       end
 
+      # Whether the underlying worker thread is still alive.
+      #
+      # @return [Boolean]
       def alive?
         @thread&.alive? || false
       end

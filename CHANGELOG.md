@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-06-14
+
+### Changed
+- Added package card image to README
+- Added YARD doc comments to Worker public methods
+- Cleaned up CHANGELOG formatting
+
 ## [0.7.0] - 2026-05-13
 
 ### Added
@@ -61,7 +68,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add Sponsor badge to README
 - Fix License section format
 - Sync gemspec summary with README
-
 
 ## [0.2.8] - 2026-03-24
 

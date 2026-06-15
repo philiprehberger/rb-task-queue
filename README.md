@@ -4,6 +4,8 @@
 [![Gem Version](https://badge.fury.io/rb/philiprehberger-task_queue.svg)](https://rubygems.org/gems/philiprehberger-task_queue)
 [![Last updated](https://img.shields.io/github/last-commit/philiprehberger/rb-task-queue)](https://github.com/philiprehberger/rb-task-queue/commits/main)
 
+![philiprehberger-task_queue](https://raw.githubusercontent.com/philiprehberger/rb-task-queue/main/package-card.webp)
+
 In-process async job queue with concurrency control
 
 ## Requirements
