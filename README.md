@@ -66,7 +66,34 @@ queue.push { File.read("/nonexistent") }
 
 queue.drain(timeout: 5)
 puts queue.stats
-# => { completed: 0, failed: 2, pending: 0, in_flight: 0 }
+# => { completed: 0, failed: 2, pending: 0, in_flight: 0, retried: 0 }
+```
+
+### Retries and backoff
+
+Failing tasks can be retried automatically. Pass `max_retries:` (default `0`, no retries) and a `retry_backoff:` policy (`:none`, `:fixed`, or `:exponential`) with a `retry_base_delay:` in seconds. A task that raises a `StandardError` is requeued up to `max_retries` times before being counted as `failed`. The `on_error` callback fires on every failed attempt and receives the attempt number as its third argument. The number of retry attempts is tracked in `stats[:retried]`.
+
+```ruby
+queue = Philiprehberger::TaskQueue.new(
+  concurrency: 4,
+  max_retries: 3,
+  retry_backoff: :exponential,  # :none | :fixed | :exponential
+  retry_base_delay: 0.5         # seconds; grows 0.5, 1.0, 2.0 for :exponential
+)
+
+queue.on_error do |exception, task, attempt|
+  warn "[TaskQueue] attempt #{attempt} failed: #{exception.message}"
+end
+
+attempts = 0
+queue.push do
+  attempts += 1
+  raise "transient failure" if attempts < 3
+  puts "succeeded on attempt #{attempts}"
+end
+
+queue.drain(timeout: 30)
+puts queue.stats[:retried]  # number of retry attempts made
 ```
 
 ### Completion callback
@@ -154,9 +181,28 @@ queue.stats_reset!
 queue.stats[:completed] # => 0
 ```
 
+### Task priorities
+
+Give tasks a `priority:` (default `0`) to have them dequeued ahead of lower-priority work. Higher priorities run first; tasks that share a priority preserve FIFO (insertion) order. The `<<` alias always enqueues at priority `0`.
+
+```ruby
+queue = Philiprehberger::TaskQueue.new(concurrency: 1)
+queue.pause
+
+queue.push(priority: 0)  { puts "low" }
+queue.push(priority: 10) { puts "high" }
+queue.push(priority: 5)  { puts "medium" }
+
+queue.resume
+queue.drain(timeout: 5)
+# high
+# medium
+# low
+```
+
 ### FIFO ordering guarantees
 
-Tasks are stored in an internal array and dequeued in FIFO order. When `concurrency` is `1`, tasks execute strictly in the order they were pushed. With higher concurrency, dequeue order is still FIFO but tasks may complete out of order depending on individual execution time.
+Tasks are stored in an internal array and dequeued in priority-then-FIFO order. With the default priority of `0`, ordering is pure FIFO. When `concurrency` is `1`, equal-priority tasks execute strictly in the order they were pushed. With higher concurrency, dequeue order is still priority-then-FIFO but tasks may complete out of order depending on individual execution time.
 
 ```ruby
 results = Queue.new  # stdlib thread-safe queue for collecting output
@@ -202,8 +248,8 @@ queue.shutdown(timeout: 5)
 
 | Method | Parameters | Returns | Description |
 |---|---|---|---|
-| `.new(concurrency:)` | `concurrency` — max worker threads (Integer, default `4`) | `Queue` | Create a new queue with the given concurrency limit |
-| `#push(&block)` | `&block` — the task to execute | `self` | Enqueue a block for async execution; raises `ArgumentError` if no block given, raises `RuntimeError` if the queue is shut down |
+| `.new(concurrency:, max_retries:, retry_backoff:, retry_base_delay:)` | `concurrency` — max worker threads (Integer, default `4`); `max_retries` — retries before a task counts as failed (Integer, default `0`); `retry_backoff` — `:none`/`:fixed`/`:exponential` (default `:none`); `retry_base_delay` — base delay in seconds (Numeric, default `0.1`) | `Queue` | Create a new queue; raises `ArgumentError` on a negative `max_retries` or unknown `retry_backoff` |
+| `#push(&block)` | `priority` — dequeue priority, higher runs first (Integer, default `0`); `&block` — the task to execute | `self` | Enqueue a block for async execution; raises `ArgumentError` if no block given, raises `RuntimeError` if the queue is shut down |
 | `#<<(callable)` | `callable` — any object responding to `#call` | `self` | Alias for `#push`; convenient for lambdas and procs |
 | `#size` | _(none)_ | `Integer` | Number of pending (not yet started) tasks |
 | `#empty?` | _(none)_ | `Boolean` | Whether there are no pending tasks waiting to be started |
@@ -211,8 +257,8 @@ queue.shutdown(timeout: 5)
 | `#running?` | _(none)_ | `Boolean` | Whether the queue is accepting new tasks |
 | `#shutdown(timeout:)` | `timeout` — seconds to wait for workers (Numeric, default `30`) | `nil` | Signal workers to stop, drain remaining tasks, join threads up to `timeout` seconds |
 | `#on_complete(&block)` | `&block` — callback receiving `(result)` | `self` | Register a callback invoked after each successful task completion with the task's return value |
-| `#on_error(&block)` | `&block` — callback receiving `(exception, task)` | `self` | Register an error callback invoked when a task raises a `StandardError` |
-| `#stats` | _(none)_ | `Hash` | Returns `{ completed:, failed:, pending:, in_flight: }` with Integer counts |
+| `#on_error(&block)` | `&block` — callback receiving `(exception, task, attempt)` | `self` | Register an error callback invoked on every failed attempt when a task raises a `StandardError`; `attempt` is the 1-based attempt number |
+| `#stats` | _(none)_ | `Hash` | Returns `{ completed:, failed:, pending:, in_flight:, retried: }` with Integer counts (`retried` is the total number of retry attempts made) |
 | `#drain(timeout:)` | `timeout` — seconds to wait (Numeric, default `30`) | `nil` | Block until all pending and in-flight tasks complete without shutting down |
 | `#pause` | _(none)_ | `self` | Suspend task consumption; in-flight tasks finish but no new tasks are picked up |
 | `#resume` | _(none)_ | `self` | Resume a paused queue, waking workers to continue processing |

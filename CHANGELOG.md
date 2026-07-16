@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-07-15
+
+### Added
+- Automatic retries with backoff — `max_retries:`, `retry_backoff:` (`:none`/`:fixed`/`:exponential`), and `retry_base_delay:` constructor options; failing tasks are requeued up to `max_retries` times before counting as `failed`
+- `retried` counter in `stats` reporting the total number of retry attempts made
+- `on_error` now receives the 1-based attempt number as its third argument
+- Task priorities — `push(priority:)` dequeues higher-priority tasks first while preserving FIFO order within the same priority (default priority `0` keeps pure FIFO behavior)
+
+### Fixed
+- Callbacks registered after the first `push` (via `on_error`/`on_complete`) now fire; handlers are read live at execution time instead of being snapshotted when workers start
+- User callbacks are isolated from stats accounting and the worker loop — a raising completion or error callback can no longer corrupt the `in_flight`/`completed`/`failed` counters or kill a worker thread
+
 ## [0.7.1] - 2026-06-14
 
 ### Changed
@@ -128,3 +140,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Thread-safe task enqueuing with `push` / `<<`
 - Graceful shutdown with timeout support
 - Auto-starting worker threads on first push
+
+[Unreleased]: https://github.com/philiprehberger/rb-task-queue/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/philiprehberger/rb-task-queue/compare/v0.7.1...v0.8.0

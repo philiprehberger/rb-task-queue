@@ -636,6 +636,229 @@ RSpec.describe Philiprehberger::TaskQueue do
       end
     end
 
+    describe 'late-registered callbacks' do
+      it 'fires an on_complete registered after the first push' do
+        late_queue = described_class.new(concurrency: 1)
+        late_queue.pause
+        results = []
+        mutex = Mutex.new
+
+        late_queue.push { 42 }
+        late_queue.on_complete { |r| mutex.synchronize { results << r } }
+
+        late_queue.resume
+        late_queue.drain(timeout: 5)
+        expect(results).to eq([42])
+        late_queue.shutdown(timeout: 5)
+      end
+
+      it 'fires an on_error registered after the first push' do
+        late_queue = described_class.new(concurrency: 1)
+        late_queue.pause
+        errors = []
+        mutex = Mutex.new
+
+        late_queue.push { raise 'late boom' }
+        late_queue.on_error { |e, _task, _attempt| mutex.synchronize { errors << e.message } }
+
+        late_queue.resume
+        late_queue.drain(timeout: 5)
+        expect(errors).to eq(['late boom'])
+        late_queue.shutdown(timeout: 5)
+      end
+    end
+
+    describe 'callback exception isolation' do
+      it 'does not corrupt stats when a completion callback raises' do
+        iso_queue = described_class.new(concurrency: 2)
+        iso_queue.on_complete { raise 'callback boom' }
+
+        10.times { iso_queue.push { 1 } }
+        iso_queue.drain(timeout: 5)
+
+        stats = iso_queue.stats
+        expect(stats[:completed]).to eq(10)
+        expect(stats[:failed]).to eq(0)
+        expect(stats[:in_flight]).to eq(0)
+        iso_queue.shutdown(timeout: 5)
+      end
+
+      it 'keeps every worker alive and processing after a completion callback raises' do
+        iso_queue = described_class.new(concurrency: 4)
+        iso_queue.on_complete { raise 'boom' }
+
+        100.times { iso_queue.push { nil } }
+        iso_queue.drain(timeout: 10)
+        expect(iso_queue.stats[:completed]).to eq(100)
+        expect(iso_queue.stats[:in_flight]).to eq(0)
+
+        counter = 0
+        mutex = Mutex.new
+        50.times { iso_queue.push { mutex.synchronize { counter += 1 } } }
+        iso_queue.drain(timeout: 10)
+        expect(counter).to eq(50)
+        iso_queue.shutdown(timeout: 5)
+      end
+
+      it 'keeps workers alive when an error handler raises' do
+        iso_queue = described_class.new(concurrency: 2)
+        iso_queue.on_error { raise 'handler boom' }
+
+        5.times { iso_queue.push { raise 'task boom' } }
+        iso_queue.drain(timeout: 5)
+        expect(iso_queue.stats[:failed]).to eq(5)
+
+        done = []
+        mutex = Mutex.new
+        5.times { |i| iso_queue.push { mutex.synchronize { done << i } } }
+        iso_queue.drain(timeout: 5)
+        expect(done.size).to eq(5)
+        iso_queue.shutdown(timeout: 5)
+      end
+    end
+
+    describe 'retries and backoff' do
+      it 'exposes a retried counter in stats, starting at zero' do
+        expect(queue.stats).to have_key(:retried)
+        expect(queue.stats[:retried]).to eq(0)
+      end
+
+      it 'defaults to no retries' do
+        no_retry = described_class.new(concurrency: 1)
+        attempts = 0
+        mutex = Mutex.new
+
+        no_retry.push do
+          mutex.synchronize { attempts += 1 }
+          raise 'boom'
+        end
+        no_retry.drain(timeout: 5)
+
+        expect(attempts).to eq(1)
+        expect(no_retry.stats[:failed]).to eq(1)
+        expect(no_retry.stats[:retried]).to eq(0)
+        no_retry.shutdown(timeout: 5)
+      end
+
+      it 'retries a failing task up to max_retries then counts it failed' do
+        retry_queue = described_class.new(concurrency: 1, max_retries: 2)
+        attempts = 0
+        mutex = Mutex.new
+
+        retry_queue.push do
+          mutex.synchronize { attempts += 1 }
+          raise 'boom'
+        end
+        retry_queue.drain(timeout: 5)
+
+        expect(attempts).to eq(3) # 1 initial + 2 retries
+        expect(retry_queue.stats[:failed]).to eq(1)
+        expect(retry_queue.stats[:retried]).to eq(2)
+        retry_queue.shutdown(timeout: 5)
+      end
+
+      it 'stops retrying once the task succeeds' do
+        retry_queue = described_class.new(concurrency: 1, max_retries: 5)
+        attempts = 0
+        mutex = Mutex.new
+
+        retry_queue.push do
+          n = mutex.synchronize { attempts += 1 }
+          raise 'transient' if n < 3
+
+          :ok
+        end
+        retry_queue.drain(timeout: 5)
+
+        expect(attempts).to eq(3)
+        expect(retry_queue.stats[:completed]).to eq(1)
+        expect(retry_queue.stats[:failed]).to eq(0)
+        expect(retry_queue.stats[:retried]).to eq(2)
+        retry_queue.shutdown(timeout: 5)
+      end
+
+      it 'passes the attempt number to on_error' do
+        retry_queue = described_class.new(concurrency: 1, max_retries: 2)
+        seen = []
+        mutex = Mutex.new
+
+        retry_queue.on_error { |_e, _task, attempt| mutex.synchronize { seen << attempt } }
+        retry_queue.push { raise 'boom' }
+        retry_queue.drain(timeout: 5)
+
+        expect(seen).to eq([1, 2, 3])
+        retry_queue.shutdown(timeout: 5)
+      end
+
+      it 'sleeps between retries when a fixed backoff is configured' do
+        retry_queue = described_class.new(
+          concurrency: 1, max_retries: 1, retry_backoff: :fixed, retry_base_delay: 0.2
+        )
+        started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        retry_queue.push { raise 'boom' }
+        retry_queue.drain(timeout: 5)
+        elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+
+        expect(elapsed).to be >= 0.2
+        expect(retry_queue.stats[:failed]).to eq(1)
+        retry_queue.shutdown(timeout: 5)
+      end
+
+      it 'raises on an unknown backoff policy' do
+        expect { described_class.new(retry_backoff: :bogus) }.to raise_error(ArgumentError)
+      end
+
+      it 'raises on a negative max_retries' do
+        expect { described_class.new(max_retries: -1) }.to raise_error(ArgumentError)
+      end
+    end
+
+    describe 'task priorities' do
+      it 'runs higher-priority tasks before lower-priority ones' do
+        prio_queue = described_class.new(concurrency: 1)
+        prio_queue.pause
+        order = []
+        mutex = Mutex.new
+
+        prio_queue.push(priority: 0) { mutex.synchronize { order << :low } }
+        prio_queue.push(priority: 10) { mutex.synchronize { order << :high } }
+        prio_queue.push(priority: 5) { mutex.synchronize { order << :mid } }
+
+        prio_queue.resume
+        prio_queue.drain(timeout: 5)
+        expect(order).to eq(%i[high mid low])
+        prio_queue.shutdown(timeout: 5)
+      end
+
+      it 'preserves FIFO order within the same priority' do
+        prio_queue = described_class.new(concurrency: 1)
+        prio_queue.pause
+        order = []
+        mutex = Mutex.new
+
+        5.times { |i| prio_queue.push(priority: 1) { mutex.synchronize { order << i } } }
+
+        prio_queue.resume
+        prio_queue.drain(timeout: 5)
+        expect(order).to eq([0, 1, 2, 3, 4])
+        prio_queue.shutdown(timeout: 5)
+      end
+
+      it 'defaults to FIFO order when no priority is given' do
+        fifo_queue = described_class.new(concurrency: 1)
+        fifo_queue.pause
+        order = []
+        mutex = Mutex.new
+
+        5.times { |i| fifo_queue.push { mutex.synchronize { order << i } } }
+
+        fifo_queue.resume
+        fifo_queue.drain(timeout: 5)
+        expect(order).to eq([0, 1, 2, 3, 4])
+        fifo_queue.shutdown(timeout: 5)
+      end
+    end
+
     describe 'version' do
       it 'has a version number' do
         expect(Philiprehberger::TaskQueue::VERSION).not_to be_nil
